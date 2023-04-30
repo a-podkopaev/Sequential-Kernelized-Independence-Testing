@@ -152,6 +152,7 @@ class SeqIndTester(object):
         self.recompute_sample_size = 2
         self.num_proc_pairs = 1
         self.mixed_wealth = None
+        self.payoff_hist = list()
         # for testing
         self.significance_level = 0.05
         self.null_rejected = False
@@ -201,115 +202,10 @@ class SeqIndTester(object):
         w4 = self.wf.evaluate_wf(
             next_pair_x[1:2], next_pair_y[0:1], prev_data_x, prev_data_y)
 
-        # compute payoff function
-        if self.bet_type == 'mean':
-            cand_payoff = 1/2 * (w1+w2-w3-w4)
-            if self.lmbd_type == 'aGRAPA':
-                if self.num_proc_pairs == 1:
-                    self.run_mean = [1e-3]
-                    self.run_second_moment = [1]
-                    self.opt_lmbd = min(max(np.mean(
-                        self.run_mean)/np.mean(self.run_second_moment), 0), self.truncation_level)
-                    payoff_fn = self.opt_lmbd * cand_payoff
-                    self.run_mean += [cand_payoff]
-                    self.run_second_moment += [cand_payoff**2]
-                    self.lmbd_hist = [self.opt_lmbd]
-                else:
-                    self.opt_lmbd = min(max(np.mean(
-                        self.run_mean)/np.mean(self.run_second_moment), 0), self.truncation_level)
-                    payoff_fn = self.opt_lmbd * cand_payoff
-                    self.run_mean += [cand_payoff]
-                    self.run_second_moment += [cand_payoff**2]
-                    self.lmbd_hist = [self.opt_lmbd]
-            elif self.lmbd_type == 'ONS':
-                if self.num_proc_pairs == 1:
-
-                    payoff_fn = self.opt_lmbd * cand_payoff
-                    self.run_mean = np.copy(cand_payoff)
-                    self.lmbd_hist = [self.opt_lmbd]
-                else:
-                    grad = self.run_mean/(1+self.run_mean*self.opt_lmbd)
-                    self.grad_sq_sum += grad**2
-                    self.opt_lmbd = max(0, min(
-                        self.truncation_level, self.opt_lmbd + 2/(2-np.log(3))*grad/self.grad_sq_sum))
-                    payoff_fn = self.opt_lmbd * cand_payoff
-                    self.run_mean = np.copy(cand_payoff)
-                    self.lmbd_hist = [self.opt_lmbd]
-            elif self.lmbd_type == 'mixing':
-                payoff_fn = cand_payoff
-            self.num_proc_pairs += 1
-            # update normalization constant
-            self.wf.update_norm_const(
-                next_pair_x, next_pair_y, prev_data_x, prev_data_y)
-        elif self.bet_type == 'symmetry':
-            if self.lmbd_type == 'aGRAPA':
-                cand_arg = w1+w2-w3-w4
-                if self.num_proc_pairs == 1:
-                    payoff_fn = 0
-                    self.run_mean = [1e-3]
-                    self.run_second_moment = [1]
-                    self.norm_constant_search += [cand_arg]
-                    self.num_proc_pairs += 1
-                elif self.num_proc_pairs <= 10:
-                    payoff_fn = 0
-                    self.norm_constant_search += [cand_arg]
-                    self.num_proc_pairs += 1
-                elif self.num_proc_pairs <= 14:
-                    payoff_fn = 0
-                    self.denom = (np.quantile(
-                        self.norm_constant_search, 0.9)-np.quantile(self.norm_constant_search, 0.1))
-                    self.run_mean += [np.tanh(cand_arg / self.denom)]
-                    self.run_second_moment += [
-                        (np.tanh(cand_arg / self.denom))**2]
-                    self.norm_constant_search += [cand_arg]
-                    self.num_proc_pairs += 1
-                else:
-                    self.opt_lmbd = min(max(np.mean(
-                        self.run_mean)/np.mean(self.run_second_moment), 0), self.truncation_level)
-                    self.denom = (np.quantile(self.norm_constant_search,
-                                  0.9)-np.quantile(self.norm_constant_search, 0.1))
-                    payoff_fn = self.opt_lmbd * np.tanh(cand_arg / self.denom)
-
-                    self.run_mean += [np.tanh(cand_arg / self.denom)]
-                    self.run_second_moment += [
-                        (np.tanh(cand_arg / self.denom))**2]
-                    self.norm_constant_search += [cand_arg]
-                    self.num_proc_pairs += 1
-
-            elif self.lmbd_type == 'ONS':
-                cand_arg = w1+w2-w3-w4
-                if self.num_proc_pairs <= 10:
-                    payoff_fn = 0
-                    self.norm_constant_search += [cand_arg]
-                    self.num_proc_pairs += 1
-                elif self.num_proc_pairs == 11:
-                    payoff_fn = 0
-                    self.denom = (np.quantile(self.norm_constant_search,
-                                  0.9)-np.quantile(self.norm_constant_search, 0.1))
-                    if self.odd_fun == 'tanh':
-                        self.run_mean = np.tanh(cand_arg / self.denom)
-                    elif self.odd_fun == 'sin':
-                        self.run_mean = np.sin(cand_arg / self.denom)
-                    self.norm_constant_search += [cand_arg]
-                    self.num_proc_pairs += 1
-                else:
-                    #   compute gradient
-                    grad = self.run_mean/(1+self.run_mean*self.opt_lmbd)
-                    self.grad_sq_sum += grad**2
-                    self.opt_lmbd = max(0, min(
-                        self.truncation_level, self.opt_lmbd + 2/(2-np.log(3))*grad/self.grad_sq_sum))
-                    self.denom = (np.quantile(self.norm_constant_search,
-                                  0.9)-np.quantile(self.norm_constant_search, 0.1))
-                    if self.odd_fun == 'tanh':
-                        payoff_fn = self.opt_lmbd * \
-                            np.tanh(cand_arg / self.denom)
-                        self.run_mean = np.tanh(cand_arg / self.denom)
-                    elif self.odd_fun == 'sin':
-                        payoff_fn = self.opt_lmbd * \
-                            np.sin(cand_arg / self.denom)
-                        self.run_mean = np.sin(cand_arg / self.denom)
-                    self.norm_constant_search += [cand_arg]
-                    self.num_proc_pairs += 1
+        payoff_fn = 1/2 * (w1+w2-w3-w4)
+        # update normalization constant
+        self.wf.update_norm_const(
+            next_pair_x, next_pair_y, prev_data_x, prev_data_y)
 
         return payoff_fn
 
@@ -399,6 +295,116 @@ class SeqIndTester(object):
         else:
             raise ValueError(
                 'Unknown version of payoff function: use hsic, coco or kcc')
+        
+        cand_payoff= payoff_fn
+        # compute payoff function
+        if self.bet_type == 'mean':
+            # cand_payoff = 1/2 * (w1+w2-w3-w4)
+            self.payoff_hist+=[cand_payoff]
+            if self.lmbd_type == 'aGRAPA':
+                if self.num_proc_pairs == 1:
+                    self.run_mean = [1e-3]
+                    self.run_second_moment = [1]
+                    self.opt_lmbd = min(max(np.mean(
+                        self.run_mean)/np.mean(self.run_second_moment), 0), self.truncation_level)
+                    payoff_fn = self.opt_lmbd * cand_payoff
+                    self.run_mean += [cand_payoff]
+                    self.run_second_moment += [cand_payoff**2]
+                    self.lmbd_hist = [self.opt_lmbd]
+                else:
+                    self.opt_lmbd = min(max(np.mean(
+                        self.run_mean)/np.mean(self.run_second_moment), 0), self.truncation_level)
+                    payoff_fn = self.opt_lmbd * cand_payoff
+                    self.run_mean += [cand_payoff]
+                    self.run_second_moment += [cand_payoff**2]
+                    self.lmbd_hist = [self.opt_lmbd]
+            elif self.lmbd_type == 'ONS':
+                if self.num_proc_pairs == 1:
+
+                    payoff_fn = self.opt_lmbd * cand_payoff
+                    self.run_mean = np.copy(cand_payoff)
+                    self.lmbd_hist = [self.opt_lmbd]
+                else:
+                    grad = self.run_mean/(1+self.run_mean*self.opt_lmbd)
+                    self.grad_sq_sum += grad**2
+                    self.opt_lmbd = max(0, min(
+                        self.truncation_level, self.opt_lmbd + 2/(2-np.log(3))*grad/self.grad_sq_sum))
+                    payoff_fn = self.opt_lmbd * cand_payoff
+                    self.run_mean = np.copy(cand_payoff)
+                    self.lmbd_hist = [self.opt_lmbd]
+            elif self.lmbd_type == 'mixing':
+                payoff_fn = cand_payoff
+            self.num_proc_pairs += 1
+            
+        # elif self.bet_type == 'symmetry':
+        #     if self.lmbd_type == 'aGRAPA':
+        #         # cand_arg = w1+w2-w3-w4
+        #         if self.num_proc_pairs == 1:
+        #             payoff_fn = 0
+        #             self.run_mean = [1e-3]
+        #             self.run_second_moment = [1]
+        #             self.norm_constant_search += [cand_arg]
+        #             self.num_proc_pairs += 1
+        #         elif self.num_proc_pairs <= 10:
+        #             payoff_fn = 0
+        #             self.norm_constant_search += [cand_arg]
+        #             self.num_proc_pairs += 1
+        #         elif self.num_proc_pairs <= 14:
+        #             payoff_fn = 0
+        #             self.denom = (np.quantile(
+        #                 self.norm_constant_search, 0.9)-np.quantile(self.norm_constant_search, 0.1))
+        #             self.run_mean += [np.tanh(cand_arg / self.denom)]
+        #             self.run_second_moment += [
+        #                 (np.tanh(cand_arg / self.denom))**2]
+        #             self.norm_constant_search += [cand_arg]
+        #             self.num_proc_pairs += 1
+        #         else:
+        #             self.opt_lmbd = min(max(np.mean(
+        #                 self.run_mean)/np.mean(self.run_second_moment), 0), self.truncation_level)
+        #             self.denom = (np.quantile(self.norm_constant_search,
+        #                           0.9)-np.quantile(self.norm_constant_search, 0.1))
+        #             payoff_fn = self.opt_lmbd * np.tanh(cand_arg / self.denom)
+
+        #             self.run_mean += [np.tanh(cand_arg / self.denom)]
+        #             self.run_second_moment += [
+        #                 (np.tanh(cand_arg / self.denom))**2]
+        #             self.norm_constant_search += [cand_arg]
+        #             self.num_proc_pairs += 1
+
+        #     elif self.lmbd_type == 'ONS':
+        #         # cand_arg = w1+w2-w3-w4
+        #         if self.num_proc_pairs <= 10:
+        #             payoff_fn = 0
+        #             self.norm_constant_search += [cand_arg]
+        #             self.num_proc_pairs += 1
+        #         elif self.num_proc_pairs == 11:
+        #             payoff_fn = 0
+        #             self.denom = (np.quantile(self.norm_constant_search,
+        #                           0.9)-np.quantile(self.norm_constant_search, 0.1))
+        #             if self.odd_fun == 'tanh':
+        #                 self.run_mean = np.tanh(cand_arg / self.denom)
+        #             elif self.odd_fun == 'sin':
+        #                 self.run_mean = np.sin(cand_arg / self.denom)
+        #             self.norm_constant_search += [cand_arg]
+        #             self.num_proc_pairs += 1
+        #         else:
+        #             #   compute gradient
+        #             grad = self.run_mean/(1+self.run_mean*self.opt_lmbd)
+        #             self.grad_sq_sum += grad**2
+        #             self.opt_lmbd = max(0, min(
+        #                 self.truncation_level, self.opt_lmbd + 2/(2-np.log(3))*grad/self.grad_sq_sum))
+        #             self.denom = (np.quantile(self.norm_constant_search,
+        #                           0.9)-np.quantile(self.norm_constant_search, 0.1))
+        #             if self.odd_fun == 'tanh':
+        #                 payoff_fn = self.opt_lmbd * \
+        #                     np.tanh(cand_arg / self.denom)
+        #                 self.run_mean = np.tanh(cand_arg / self.denom)
+        #             elif self.odd_fun == 'sin':
+        #                 payoff_fn = self.opt_lmbd * \
+        #                     np.sin(cand_arg / self.denom)
+        #                 self.run_mean = np.sin(cand_arg / self.denom)
+        #             self.norm_constant_search += [cand_arg]
+        #             self.num_proc_pairs += 1
         # update wealth process value
 
 
