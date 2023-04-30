@@ -4,7 +4,7 @@ Code for the paper: [Sequential Kernelized Independence Testing](https://arxiv.o
 
 Sequential Independence Tests process data online and control the type-1 error despite continuously monitoring data.
 
-``gaussian_example.ipynb'' is a notebook that contains an illustation of SKIT deployed on Gaussian linear model.
+This [notebook](/gaussian_example.ipynb) contains an illustation of SKIT deployed on Gaussian linear model.
 
 ## Contents
 
