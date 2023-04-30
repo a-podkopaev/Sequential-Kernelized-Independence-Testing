@@ -183,7 +183,6 @@ class KCCWitness(object):
     """
     KCC witness functions
     """
-
     def __init__(self):
         self.kernel_param_x = 1
         self.kernel_param_y = 1
@@ -500,10 +499,6 @@ class HSICWitness(object):
             if self.weighted_wf is False:
                 mu_joint = np.mean(l_mat*k_mat)
                 mu_product = np.mean(l_mat, axis=1) @ np.mean(k_mat, axis=1)
-                # print(mu_joint)
-                # print(mu_product)
-                # print(mu_joint)
-                # print(mu_product)
                 res = mu_joint-mu_product
             else:
                 # assign weights
@@ -512,15 +507,8 @@ class HSICWitness(object):
                 weights = np.repeat(weights, 2).reshape(1,-1)
                 sum_weights = np.sum(weights)
                 weights /= (2*sum_weights)
-                # print(k_mat.shape)
-                # print(l_mat.shape)
-                # print(weights.shape)
-                # print((weights * l_mat * k_mat).shape)
-                # print(weights)
                 mu_joint = np.sum(weights * l_mat * k_mat)
                 mu_product = np.sum(
                     weights * l_mat, axis=1) @ np.sum(weights * k_mat, axis=1)
-                # print(mu_joint)
-                # print(mu_product)
                 res = mu_joint - mu_product
         return res

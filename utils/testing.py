@@ -8,7 +8,7 @@ TYPES_KERNEL = ['rbf', 'laplace']
 def compute_hyperparam(data: np.ndarray,
                        kernel_type: TYPES_KERNEL = 'rbf', style='median') -> float:
     """
-    Use median heuristic to compute the hyperparameter
+    Median heuristic for computing kernel hyperparameters
     """
     if kernel_type == 'rbf':
         if data.ndim == 1:
@@ -130,6 +130,9 @@ def batch_hsic(data_x: np.ndarray, data_y: np.ndarray,
 
 
 class SeqIndTester(object):
+    """
+    SKIT
+    """
     def __init__(self):
         # specify the payoff function style, default: hsic
         self.payoff_style = 'hsic'
@@ -166,7 +169,6 @@ class SeqIndTester(object):
         self.hist_grad_sq = list()
         self.num_of_grads = 1
         self.denom = 0
-        self.weighted_wf = False
 
     def initialize_mixture_method(self):
         """
@@ -179,6 +181,9 @@ class SeqIndTester(object):
         self.wealth_flag = [False for _ in range(self.lmbd_grid_size)]
 
     def compute_hsic_payoff(self, next_pair_x, next_pair_y, prev_data_x, prev_data_y):
+        """
+        Function that computes HSIC payoff
+        """
         if self.wf is None:
             self.wf = HSICWitness()
             self.wf.kernel_type = self.kernel_type
@@ -210,6 +215,9 @@ class SeqIndTester(object):
         return payoff_fn
 
     def compute_kcc_payoff(self, next_pair_x, next_pair_y, prev_data_x, prev_data_y):
+        """
+        Function that computes KCC payoff
+        """
         if self.wf is None:
             self.wf = KCCWitness()
             self.wf.kernel_type = self.kernel_type
@@ -244,6 +252,9 @@ class SeqIndTester(object):
         return payoff_fn
 
     def compute_coco_payoff(self, next_pair_x, next_pair_y, prev_data_x, prev_data_y):
+        """
+        Function that computes COCO payoff
+        """
         if self.wf is None:
             self.wf = COCOWitness()
             self.wf.kernel_type = self.kernel_type
@@ -335,78 +346,6 @@ class SeqIndTester(object):
             elif self.lmbd_type == 'mixing':
                 payoff_fn = cand_payoff
             self.num_proc_pairs += 1
-            
-        # elif self.bet_type == 'symmetry':
-        #     if self.lmbd_type == 'aGRAPA':
-        #         # cand_arg = w1+w2-w3-w4
-        #         if self.num_proc_pairs == 1:
-        #             payoff_fn = 0
-        #             self.run_mean = [1e-3]
-        #             self.run_second_moment = [1]
-        #             self.norm_constant_search += [cand_arg]
-        #             self.num_proc_pairs += 1
-        #         elif self.num_proc_pairs <= 10:
-        #             payoff_fn = 0
-        #             self.norm_constant_search += [cand_arg]
-        #             self.num_proc_pairs += 1
-        #         elif self.num_proc_pairs <= 14:
-        #             payoff_fn = 0
-        #             self.denom = (np.quantile(
-        #                 self.norm_constant_search, 0.9)-np.quantile(self.norm_constant_search, 0.1))
-        #             self.run_mean += [np.tanh(cand_arg / self.denom)]
-        #             self.run_second_moment += [
-        #                 (np.tanh(cand_arg / self.denom))**2]
-        #             self.norm_constant_search += [cand_arg]
-        #             self.num_proc_pairs += 1
-        #         else:
-        #             self.opt_lmbd = min(max(np.mean(
-        #                 self.run_mean)/np.mean(self.run_second_moment), 0), self.truncation_level)
-        #             self.denom = (np.quantile(self.norm_constant_search,
-        #                           0.9)-np.quantile(self.norm_constant_search, 0.1))
-        #             payoff_fn = self.opt_lmbd * np.tanh(cand_arg / self.denom)
-
-        #             self.run_mean += [np.tanh(cand_arg / self.denom)]
-        #             self.run_second_moment += [
-        #                 (np.tanh(cand_arg / self.denom))**2]
-        #             self.norm_constant_search += [cand_arg]
-        #             self.num_proc_pairs += 1
-
-        #     elif self.lmbd_type == 'ONS':
-        #         # cand_arg = w1+w2-w3-w4
-        #         if self.num_proc_pairs <= 10:
-        #             payoff_fn = 0
-        #             self.norm_constant_search += [cand_arg]
-        #             self.num_proc_pairs += 1
-        #         elif self.num_proc_pairs == 11:
-        #             payoff_fn = 0
-        #             self.denom = (np.quantile(self.norm_constant_search,
-        #                           0.9)-np.quantile(self.norm_constant_search, 0.1))
-        #             if self.odd_fun == 'tanh':
-        #                 self.run_mean = np.tanh(cand_arg / self.denom)
-        #             elif self.odd_fun == 'sin':
-        #                 self.run_mean = np.sin(cand_arg / self.denom)
-        #             self.norm_constant_search += [cand_arg]
-        #             self.num_proc_pairs += 1
-        #         else:
-        #             #   compute gradient
-        #             grad = self.run_mean/(1+self.run_mean*self.opt_lmbd)
-        #             self.grad_sq_sum += grad**2
-        #             self.opt_lmbd = max(0, min(
-        #                 self.truncation_level, self.opt_lmbd + 2/(2-np.log(3))*grad/self.grad_sq_sum))
-        #             self.denom = (np.quantile(self.norm_constant_search,
-        #                           0.9)-np.quantile(self.norm_constant_search, 0.1))
-        #             if self.odd_fun == 'tanh':
-        #                 payoff_fn = self.opt_lmbd * \
-        #                     np.tanh(cand_arg / self.denom)
-        #                 self.run_mean = np.tanh(cand_arg / self.denom)
-        #             elif self.odd_fun == 'sin':
-        #                 payoff_fn = self.opt_lmbd * \
-        #                     np.sin(cand_arg / self.denom)
-        #                 self.run_mean = np.sin(cand_arg / self.denom)
-        #             self.norm_constant_search += [cand_arg]
-        #             self.num_proc_pairs += 1
-        # update wealth process value
-
 
         if self.lmbd_type == 'ONS' or self.lmbd_type == 'aGRAPA':
             cand_wealth = self.wealth * (1+payoff_fn)
